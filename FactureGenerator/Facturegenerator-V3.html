@@ -1,0 +1,1409 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Éditeur de Facture Pro - Five Trees</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #333333 0%, #cccccc 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(to bottom, #333333 0%, #cccccc 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .theme-selector {
+            background: #f8f9fa;
+            padding: 20px 40px;
+            border-bottom: 2px solid #e0e6ed;
+        }
+
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .theme-option {
+            padding: 15px;
+            border: 3px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .theme-option:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .theme-option.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .theme-preview {
+            width: 100%;
+            height: 60px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .form-container {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            border: 1px solid #e0e6ed;
+            border-radius: 10px;
+            padding: 25px;
+            background: #f8f9fa;
+        }
+
+        .section h2 {
+            color: #bd0000;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #545454;
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h2::before {
+            content: '📊';
+            font-size: 1.2em;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #ff0000;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            padding: 12px 15px;
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.5);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group input[type="color"] {
+            padding: 5px;
+            height: 50px;
+            width: 100%;
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .logo-upload {
+            border: 2px dashed #667eea;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logo-upload:hover {
+            background: #f0f4ff;
+        }
+
+        .logo-preview {
+            max-width: 200px;
+            max-height: 100px;
+            margin: 10px auto;
+            display: none;
+        }
+
+        .lignes-facture {
+            margin-top: 20px;
+        }
+
+        .ligne-item {
+            background: white;
+            border: 2px solid #e0e6ed;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .ligne-grid {
+            display: grid;
+            grid-template-columns: 50px 2fr 0.7fr 0.7fr 0.7fr 1fr 0.7fr;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #B3C4FF, #003AFF);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+            padding: 8px 15px;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .actions {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e6ed;
+        }
+
+        .btn-generate {
+            font-size: 1.3em;
+            padding: 15px 40px;
+            background: linear-gradient(to bottom, #CC0000 0%, #B00000 100%);
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.9);
+        }
+
+        .total-recap {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 1.1em;
+        }
+
+        .total-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .total-item {
+            text-align: center;
+        }
+
+        .total-item .label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .total-item .value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .options-avancees {
+            background: #D4D4D4;
+            border: 1px solid #7A7A7A;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            font-size: 1.2em;
+            margin-top: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .ligne-grid {
+                grid-template-columns: 1fr;
+            }
+            .total-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .form-container {
+                padding: 20px;
+            }
+            .theme-grid {
+                grid-template-columns: 1fr;
+            }
+            input, textarea, select {
+                font-size: 16px !important;
+            }
+            .form-group input, .form-group textarea, .form-group select {
+                padding: 15px;
+                min-height: 50px;
+            }
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+        .theme-option:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌳 FiveTrees — Pro Invoice Editor</h1>
+            <p>© 2025 Parisian TukTuks. All rights reserved.</p>
+        </div>
+
+        <div class="theme-selector">
+            <h3 style="color: #2c3e50; margin-bottom: 10px;">🎨 Choisissez votre thème visuel :</h3>
+            <div class="theme-grid">
+                <div class="theme-option active" data-theme="classique">
+                    <div class="theme-preview" style="background: linear-gradient(135deg, #2c3e50, #3498db);">CLASSIQUE</div>
+                    <strong>Classique</strong><br>
+                    <small style="color: #7f8c8d;">Design traditionnel français</small>
+                </div>
+                <div class="theme-option" data-theme="moderne">
+                    <div class="theme-preview" style="background: linear-gradient(135deg, #00b894, #00cec9);">MODERNE</div>
+                    <strong>Moderne</strong><br>
+                    <small style="color: #7f8c8d;">Style épuré et actuel</small>
+                </div>
+                <div class="theme-option" data-theme="corporate">
+                    <div class="theme-preview" style="background: linear-gradient(135deg, #6c5ce7, #a29bfe);">CORPORATE</div>
+                    <strong>Corporate</strong><br>
+                    <small style="color: #7f8c8d;">Esprit entreprise</small>
+                </div>
+                <div class="theme-option" data-theme="minimaliste">
+                    <div class="theme-preview" style="background: linear-gradient(135deg, #2d3436, #636e72);">MINIMALISTE</div>
+                    <strong>Minimaliste</strong><br>
+                    <small style="color: #7f8c8d;">Pureté et simplicité</small>
+                </div>
+                <div class="theme-option" data-theme="creatif">
+                    <div class="theme-preview" style="background: linear-gradient(135deg, #e84393, #fdcb6e);">CRÉATIF</div>
+                    <strong>Créatif</strong><br>
+                    <small style="color: #7f8c8d;">Original et coloré</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <form id="factureForm">
+                <div class="section">
+                    <h2>Informations Prestataire</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="prestataireNom">Nom de la société *</label>
+                            <input type="text" id="prestataireNom" value="Five Trees" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="prestataireSiret">SIRET *</label>
+                            <input type="text" id="prestataireSiret" value="123 456 789 00010" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="prestataireTva">TVA Intra-communautaire</label>
+                            <input type="text" id="prestataireTva" value="FR 12 123456789">
+                        </div>
+                        <div class="form-group">
+                            <label for="prestataireAdresse">Adresse *</label>
+                            <textarea id="prestataireAdresse" required>123 Rue des Entrepreneurs, 75001 Paris</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="prestataireEmail">Email *</label>
+                            <input type="email" id="prestataireEmail" value="contact@fivetrees.fr" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="prestataireTelephone">Téléphone</label>
+                            <input type="tel" id="prestataireTelephone" value="01 23 45 67 89">
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label>Logo de l'entreprise (optionnel)</label>
+                            <div class="logo-upload" onclick="document.getElementById('logoInput').click()">
+                                <input type="file" id="logoInput" accept="image/*" style="display: none;" onchange="handleLogo(event)">
+                                <div id="logoUploadText">📷 Cliquez pour ajouter votre logo</div>
+                                <img id="logoPreview" class="logo-preview" alt="Logo preview">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Informations Client</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="clientNom">Nom du client *</label>
+                            <input type="text" id="clientNom" value="Client Test SA" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="clientAdresse">Adresse du client *</label>
+                            <textarea id="clientAdresse" required>45 Avenue des Champs, 69002 Lyon</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Informations Facture</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="titreFacture">Titre du document *</label>
+                            <input type="text" id="titreFacture" value="FACTURE" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="factureNumero">Numéro de facture *</label>
+                            <input type="text" id="factureNumero" value="FT-2024-001" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="factureDate">Date de facture *</label>
+                            <input type="date" id="factureDate" required>
+                        </div>
+                        <!-- Champ Date de prestation supprimé -->
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Lignes de facturation</h2>
+                    <div id="lignesContainer" class="lignes-facture"></div>
+                    <button type="button" class="btn btn-primary" onclick="ajouterLigne()">+ Ajouter une ligne</button>
+                    
+                    <div class="total-recap">
+                        <div class="total-grid">
+                            <div class="total-item">
+                                <div class="label">TOTAL HT</div>
+                                <div class="value" id="totalHT">0,00 €</div>
+                            </div>
+                            <div class="total-item">
+                                <div class="label">TOTAL TVA</div>
+                                <div class="value" id="totalTVA">0,00 €</div>
+                            </div>
+                            <div class="total-item">
+                                <div class="label">TOTAL TTC</div>
+                                <div class="value" id="totalTTC">0,00 €</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="options-avancees">
+                    <h3 style="color: #856404; margin-bottom: 15px;">⚙️ Options avancées</h3>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="showMentions" checked>
+                        <label for="showMentions">Inclure les mentions légales standard</label>
+                    </div>
+                    <div class="form-group" id="customMentionsGroup" style="display: none;">
+                        <label for="customMentions">Mentions légales personnalisées (optionnel)</label>
+                        <textarea id="customMentions" placeholder="Ajoutez vos propres mentions légales..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="commentaire">Commentaire en bas de facture (optionnel)</label>
+                        <textarea id="commentaire" placeholder="Ex: Merci pour votre confiance. Paiement attendu sous 30 jours."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="pdfBackgroundColor">Couleur de fond du PDF</label>
+                        <input type="color" id="pdfBackgroundColor" value="#FFFFFF">
+                    </div>
+
+                </div>
+
+                <div class="actions">
+                    <button type="submit" class="btn btn-generate">🎯 Générer la facture PDF</button>
+                </div>
+
+                <div id="loading" class="loading">
+                    ⏳ Génération du PDF en cours...
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Conversion HEX -> RGB (pdf-lib)
+        function hexToRgb(hex) {
+            var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+            hex = hex.replace(shorthandRegex, function(m, r, g, b) {
+                return r + r + g + g + b + b;
+            });
+            var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16) / 255,
+                g: parseInt(result[2], 16) / 255,
+                b: parseInt(result[3], 16) / 255
+            } : { r: 1, g: 1, b: 1 };
+        }
+
+        // Protection localStorage
+        let localStorageAvailable = false;
+        try {
+            localStorage.setItem('test', 'test');
+            localStorage.removeItem('test');
+            localStorageAvailable = true;
+        } catch (e) {
+            console.warn('⚠️ localStorage non disponible (environnement sécurisé)');
+        }
+
+        // Thèmes
+        const themes = {
+            classique: {
+                name: 'Classique',
+                colors: {
+                    primary: [0.17, 0.24, 0.31],
+                    secondary: [0.20, 0.60, 0.86],
+                    accent: [0.90, 0.90, 0.90],
+                    text: [0, 0, 0],
+                    headerText: [1, 1, 1],
+                    totalBox: [0.17, 0.24, 0.31]
+                },
+                fonts: {
+                    title: 'Helvetica-Bold',
+                    regular: 'Helvetica',
+                    bold: 'Helvetica-Bold'
+                },
+                fontSizes: {
+                    title: 24,
+                    header: 11,
+                    body: 10,
+                    small: 9
+                }
+            },
+            moderne: {
+                name: 'Moderne',
+                colors: {
+                    primary: [0, 0.72, 0.58],
+                    secondary: [0, 0.81, 0.79],
+                    accent: [0.95, 0.95, 0.98],
+                    text: [0.1, 0.1, 0.1],
+                    headerText: [1, 1, 1],
+                    totalBox: [0, 0.72, 0.58]
+                },
+                fonts: {
+                    title: 'Helvetica-Bold',
+                    regular: 'Helvetica',
+                    bold: 'Helvetica-Bold'
+                },
+                fontSizes: {
+                    title: 26,
+                    header: 12,
+                    body: 10,
+                    small: 8
+                }
+            },
+            corporate: {
+                name: 'Corporate',
+                colors: {
+                    primary: [0.42, 0.36, 0.90],
+                    secondary: [0.64, 0.60, 1],
+                    accent: [0.97, 0.97, 1],
+                    text: [0.15, 0.15, 0.15],
+                    headerText: [1, 1, 1],
+                    totalBox: [0.42, 0.36, 0.90]
+                },
+                fonts: {
+                    title: 'Courier-Bold',
+                    regular: 'Courier',
+                    bold: 'Courier-Bold'
+                },
+                fontSizes: {
+                    title: 22,
+                    header: 11,
+                    body: 9,
+                    small: 8
+                }
+            },
+            minimaliste: {
+                name: 'Minimaliste',
+                colors: {
+                    primary: [0.18, 0.21, 0.21],
+                    secondary: [0.39, 0.43, 0.45],
+                    accent: [0.98, 0.98, 0.98],
+                    text: [0, 0, 0],
+                    headerText: [1, 1, 1],
+                    totalBox: [0.18, 0.21, 0.21]
+                },
+                fonts: {
+                    title: 'Helvetica-Bold',
+                    regular: 'Helvetica',
+                    bold: 'Helvetica-Bold'
+                },
+                fontSizes: {
+                    title: 20,
+                    header: 10,
+                    body: 9,
+                    small: 8
+                }
+            },
+            creatif: {
+                name: 'Créatif',
+                colors: {
+                    primary: [0.91, 0.26, 0.58],
+                    secondary: [0.99, 0.80, 0.43],
+                    accent: [1, 0.95, 0.9],
+                    text: [0.2, 0.2, 0.2],
+                    headerText: [1, 1, 1],
+                    totalBox: [0.91, 0.26, 0.58]
+                },
+                fonts: {
+                    title: 'Helvetica-Bold',
+                    regular: 'Helvetica',
+                    bold: 'Helvetica-Bold'
+                },
+                fontSizes: {
+                    title: 28,
+                    header: 12,
+                    body: 10,
+                    small: 9
+                }
+            }
+        };
+
+        let currentTheme = 'classique';
+        let logoBase64 = null;
+
+        try {
+            logoBase64 = localStorageAvailable ? localStorage.getItem('logoFacture') : null;
+        } catch (e) {
+            console.warn('⚠️ Impossible de charger le logo');
+        }
+
+        let ligneIdCounter = 0;
+        
+        // Définir la date du jour par défaut
+        document.getElementById('factureDate').valueAsDate = new Date();
+
+        // Charger le logo si existant
+        if (logoBase64) {
+            document.getElementById('logoPreview').src = logoBase64;
+            document.getElementById('logoPreview').style.display = 'block';
+            document.getElementById('logoUploadText').textContent = '🖼️ Cliquez pour changer le logo';
+        }
+
+        // Gestion du sélecteur de thème
+        document.querySelectorAll('.theme-option').forEach(option => {
+            option.addEventListener('click', function() {
+                try {
+                    document.querySelectorAll('.theme-option').forEach(o => o.classList.remove('active'));
+                    this.classList.add('active');
+                    currentTheme = this.dataset.theme;
+                } catch (error) {
+                    console.error('❌ Erreur changement thème:', error);
+                }
+            });
+        });
+
+        // Mentions légales
+        document.getElementById('showMentions').addEventListener('change', function() {
+            document.getElementById('customMentionsGroup').style.display = this.checked ? 'none' : 'block';
+        });
+
+        // Ajouter la première ligne
+        ajouterLigne();
+
+        function ajouterLigne() {
+            try {
+                ligneIdCounter++;
+                const container = document.getElementById('lignesContainer');
+                const ligneDiv = document.createElement('div');
+                ligneDiv.className = 'ligne-item';
+                ligneDiv.id = `ligne-${ligneIdCounter}`;
+                
+                ligneDiv.innerHTML = `
+    <div class="ligne-grid">
+        <div class="form-group">
+            <button type="button" class="btn btn-danger" onclick="supprimerLigne(${ligneIdCounter})" style="width: 100%;">🗑️</button>
+        </div>
+        <div class="form-group">
+            <label>Description *</label>
+            <input type="text" class="description" placeholder="Ex: Tour de France" value="${ligneIdCounter === 1 ? 'Service de conseil stratégique' : ''}" required>
+        </div>
+        <div class="form-group">
+            <label>Quantité *</label>
+            <input type="number" class="quantite" value="${ligneIdCounter === 1 ? '1' : '1'}" min="0" step="0.01" required>
+        </div>
+        <div class="form-group">
+            <label>Prix TTC *</label>
+            <input type="number" class="prixTTC" value="${ligneIdCounter === 1 ? '1200.00' : ''}" min="0" step="0.01" required>
+        </div>
+        <div class="form-group">
+            <label>Taux TVA *</label>
+            <select class="tauxTVA" required>
+                <option value="20" selected>20%</option>
+                <option value="10">10%</option>
+                <option value="5.5">5.5%</option>
+                <option value="2.1">2.1%</option>
+                <option value="0">0%</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Mode de paiement *</label>
+            <select class="modePaiement" required>
+                <option value="Bancaire" selected>Bancaire</option>
+                <option value="Espèces">Espèces</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Total TTC</label>
+            <input type="text" class="totalLigneTTC" readonly style="background: #f0f0f0;">
+        </div>
+    </div>
+`;
+                container.appendChild(ligneDiv);
+                
+                const inputs = ligneDiv.querySelectorAll('input, select');
+                inputs.forEach(input => {
+                    input.addEventListener('input', calculerTotaux);
+                    input.addEventListener('change', calculerTotaux);
+                });
+                
+                calculerTotaux();
+            } catch (error) {
+                console.error('❌ Erreur ajout ligne:', error);
+                alert('Erreur lors de l\'ajout d\'une ligne. Essayez de recharger la page.');
+            }
+        }
+
+        function supprimerLigne(id) {
+            try {
+                const ligne = document.getElementById(`ligne-${id}`);
+                if (ligne && document.querySelectorAll('.ligne-item').length > 1) {
+                    ligne.remove();
+                    calculerTotaux();
+                } else {
+                    alert('Vous devez conserver au moins une ligne.');
+                }
+            } catch (error) {
+                console.error('❌ Erreur suppression ligne:', error);
+            }
+        }
+
+        function calculerTotaux() {
+            try {
+                let totalHT = 0;
+                let totalTVA = 0;
+                let totalTTC = 0;
+
+                const lignes = document.querySelectorAll('.ligne-item');
+                lignes.forEach(ligne => {
+                    const quantite = parseFloat(ligne.querySelector('.quantite').value) || 0;
+                    const prixTTC = parseFloat(ligne.querySelector('.prixTTC').value) || 0;
+                    const tauxTVA = parseFloat(ligne.querySelector('.tauxTVA').value) || 0;
+
+                    const prixHT = tauxTVA > 0 ? prixTTC / (1 + tauxTVA / 100) : prixTTC;
+                    const montantHT = prixHT * quantite;
+                    const montantTTC = prixTTC * quantite;
+                    const montantTVA = montantTTC - montantHT;
+
+                    totalHT += montantHT;
+                    totalTVA += montantTVA;
+                    totalTTC += montantTTC;
+
+                    ligne.querySelector('.totalLigneTTC').value = montantTTC.toFixed(2) + ' €';
+                });
+
+                document.getElementById('totalHT').textContent = totalHT.toLocaleString('fr-FR', {minimumFractionDigits: 2}) + ' €';
+                document.getElementById('totalTVA').textContent = totalTVA.toLocaleString('fr-FR', {minimumFractionDigits: 2}) + ' €';
+                document.getElementById('totalTTC').textContent = totalTTC.toLocaleString('fr-FR', {minimumFractionDigits: 2}) + ' €';
+            } catch (error) {
+                console.error('❌ Erreur calcul totaux:', error);
+            }
+        }
+
+        function handleLogo(event) {
+            try {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        logoBase64 = e.target.result;
+                        document.getElementById('logoPreview').src = logoBase64;
+                        document.getElementById('logoPreview').style.display = 'block';
+                        document.getElementById('logoUploadText').textContent = '🖼️ Cliquez pour changer le logo';
+                        
+                        if (localStorageAvailable) {
+                            localStorage.setItem('logoFacture', logoBase64);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            } catch (error) {
+                console.error('❌ Erreur chargement logo:', error);
+            }
+        }
+
+        // Génération du PDF
+        document.getElementById('factureForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const loading = document.getElementById('loading');
+            loading.classList.add('active');
+
+            try {
+                const pdfDoc = await PDFLib.PDFDocument.create();
+                const theme = themes[currentTheme];
+                
+                let page = pdfDoc.addPage([595.28, 841.89]);
+                const { width, height } = page.getSize();
+
+                // Fond de page
+                const backgroundColorHex = document.getElementById('pdfBackgroundColor').value;
+                const bgColor = hexToRgb(backgroundColorHex);
+                page.drawRectangle({
+                    x: 0,
+                    y: 0,
+                    width: width,
+                    height: height,
+                    color: PDFLib.rgb(bgColor.r, bgColor.g, bgColor.b)
+                });
+
+                const margin = 50;
+                let yPosition = height - margin;
+
+                // Polices
+                const fontRegular = await pdfDoc.embedFont(theme.fonts.regular);
+                const fontBold = await pdfDoc.embedFont(theme.fonts.bold);
+
+                // Barre d'en-tête
+                const titreFacture = document.getElementById('titreFacture').value || 'FACTURE';
+                const headerHeight = 50;
+                
+                page.drawRectangle({
+                    x: 0,
+                    y: height - headerHeight,
+                    width: width,
+                    height: headerHeight,
+                    color: PDFLib.rgb(...theme.colors.primary)
+                });
+
+                page.drawText(titreFacture, {
+                    x: width / 2 - (titreFacture.length * theme.fontSizes.title / 4),
+                    y: height - headerHeight / 2 - 5,
+                    size: theme.fontSizes.title,
+                    font: fontBold,
+                    color: PDFLib.rgb(...theme.colors.headerText)
+                });
+
+                yPosition = height - headerHeight - 30;
+
+                // Colonnes top: logo + infos facture
+                const leftColumnX = margin;
+                const rightColumnX = width - 200;
+                let leftY = yPosition;
+                let rightY = yPosition;
+
+                // Logo
+                if (logoBase64) {
+                    try {
+                        const logoImage = await pdfDoc.embedPng(logoBase64.split(',')[1]);
+                        const logoDims = logoImage.scale(0.15);
+                        page.drawImage(logoImage, {
+                            x: leftColumnX,
+                            y: leftY - logoDims.height,
+                            width: logoDims.width,
+                            height: logoDims.height
+                        });
+                        leftY -= logoDims.height + 20;
+                    } catch (e) {
+                        try {
+                            const logoImage = await pdfDoc.embedJpg(logoBase64.split(',')[1]);
+                            const logoDims = logoImage.scale(0.15);
+                            page.drawImage(logoImage, {
+                                x: leftColumnX,
+                                y: leftY - logoDims.height,
+                                width: logoDims.width,
+                                height: logoDims.height
+                            });
+                            leftY -= logoDims.height + 20;
+                        } catch (e2) {
+                            console.log('Format de logo non supporté');
+                        }
+                    }
+                }
+
+                // Infos facture (droite)
+                const factureNumero = document.getElementById('factureNumero').value;
+                const factureDate = new Date(document.getElementById('factureDate').value).toLocaleDateString('fr-FR');
+
+                page.drawText(`N°: ${factureNumero}`, {
+                    x: rightColumnX,
+                    y: rightY,
+                    size: theme.fontSizes.header,
+                    font: fontBold,
+                    color: PDFLib.rgb(...theme.colors.text)
+                });
+                rightY -= 20;
+                page.drawText(`Date: ${factureDate}`, {
+                    x: rightColumnX,
+                    y: rightY,
+                    size: theme.fontSizes.header,
+                    font: fontBold,
+                    color: PDFLib.rgb(...theme.colors.text)
+                });
+
+                // Infos prestataire (gauche)
+                const prestataireNom = document.getElementById('prestataireNom').value;
+                const prestataireAdresse = document.getElementById('prestataireAdresse').value;
+                const prestataireSiret = document.getElementById('prestataireSiret').value;
+                const prestataireTva = document.getElementById('prestataireTva').value;
+                const prestataireEmail = document.getElementById('prestataireEmail').value;
+                const prestataireTel = document.getElementById('prestataireTelephone').value;
+
+                page.drawText(prestataireNom, {
+                    x: leftColumnX,
+                    y: leftY,
+                    size: theme.fontSizes.header,
+                    font: fontBold,
+                    color: PDFLib.rgb(...theme.colors.text)
+                });
+                leftY -= 20;
+                page.drawText(prestataireAdresse, {
+                    x: leftColumnX,
+                    y: leftY,
+                    size: theme.fontSizes.body,
+                    font: fontRegular,
+                    color: PDFLib.rgb(...theme.colors.text)
+                });
+                leftY -= 15;
+                page.drawText(`SIRET: ${prestataireSiret}`, {
+                    x: leftColumnX,
+                    y: leftY,
+                    size: theme.fontSizes.body,
+                    font: fontRegular,
+                    color: PDFLib.rgb(...theme.colors.text)
+                });
+                leftY -= 15;
+                if (prestataireTva) {
+                    page.drawText(`TVA: ${prestataireTva}`, {
+                        x: leftColumnX,
+                        y: leftY,
+                        size: theme.fontSizes.body,
+                        font: fontRegular,
+                        color: PDFLib.rgb(...theme.colors.text)
+                    });
+                    leftY -= 15;
+                }
+                page.drawText(`Email: ${prestataireEmail}`, {
+                    x: leftColumnX,
+                    y: leftY,
+                    size: theme.fontSizes.body,
+                    font: fontRegular,
+                    color: PDFLib.rgb(...theme.colors.text)
+                });
+                leftY -= 15;
+                if (prestataireTel) {
+                    page.drawText(`Tel: ${prestataireTel}`, {
+                        x: leftColumnX,
+                        y: leftY,
+                        size: theme.fontSizes.body,
+                        font: fontRegular,
+                        color: PDFLib.rgb(...theme.colors.text)
+                    });
+                    leftY -= 15;
+                }
+
+                yPosition = Math.min(leftY, rightY) - 30;
+
+                // Client
+                page.drawText('Facturé à :', {
+                    x: margin,
+                    y: yPosition,
+                    size: theme.fontSizes.header,
+                    font: fontBold,
+                    color: PDFLib.rgb(...theme.colors.primary)
+                });
+                yPosition -= 25;
+                const clientNom = document.getElementById('clientNom').value;
+                const clientAdresse = document.getElementById('clientAdresse').value;
+                page.drawText(clientNom, {
+                    x: margin,
+                    y: yPosition,
+                    size: theme.fontSizes.body,
+                    font: fontBold,
+                    color: PDFLib.rgb(...theme.colors.text)
+                });
+                yPosition -= 15;
+                page.drawText(clientAdresse, {
+                    x: margin,
+                    y: yPosition,
+                    size: theme.fontSizes.body,
+                    font: fontRegular,
+                    color: PDFLib.rgb(...theme.colors.text)
+                });
+                yPosition -= 40;
+
+                // Tableau
+                const tableX = margin;
+                const tableWidth = width - 2 * margin;
+                const colWidths = [tableWidth * 0.35, tableWidth * 0.1, tableWidth * 0.15, tableWidth * 0.12, tableWidth * 0.13, tableWidth * 0.15];
+
+                if (yPosition < 200) {
+                    const newPage = pdfDoc.addPage([595.28, 841.89]);
+                    page = newPage;
+                    page.drawRectangle({
+                        x: 0, y: 0, width: width, height: height,
+                        color: PDFLib.rgb(bgColor.r, bgColor.g, bgColor.b)
+                    });
+                    yPosition = height - margin - 30;
+                }
+                
+                page.drawRectangle({
+                    x: tableX,
+                    y: yPosition - 5,
+                    width: tableWidth,
+                    height: 20,
+                    color: PDFLib.rgb(...theme.colors.primary)
+                });
+
+                const headers = ['DESCRIPTION', 'QTE', 'PRIX HT', 'TVA', 'PAIEMENT', 'TOTAL TTC'];
+                let headerX = tableX;
+                headers.forEach((header, i) => {
+                    page.drawText(header, {
+                        x: headerX + 5,
+                        y: yPosition,
+                        size: theme.fontSizes.body,
+                        font: fontBold,
+                        color: PDFLib.rgb(...theme.colors.headerText)
+                    });
+                    headerX += colWidths[i];
+                });
+                yPosition -= 30;
+
+                // Lignes tableau
+                let totalHT = 0, totalTVA = 0, totalTTC = 0;
+                const lignes = document.querySelectorAll('.ligne-item');
+                
+                for (let ligne of lignes) {
+                    const description = ligne.querySelector('.description').value;
+                    const quantite = parseFloat(ligne.querySelector('.quantite').value) || 0;
+                    const prixTTC = parseFloat(ligne.querySelector('.prixTTC').value) || 0;
+                    const tauxTVA = parseFloat(ligne.querySelector('.tauxTVA').value) || 0;
+                    const modePaiement = ligne.querySelector('.modePaiement').value;
+
+                    const prixHT = tauxTVA > 0 ? prixTTC / (1 + tauxTVA / 100) : prixTTC;
+                    const montantHT = prixHT * quantite;
+                    const montantTTC = prixTTC * quantite;
+                    const montantTVA = montantTTC - montantHT;
+
+                    totalHT += montantHT;
+                    totalTVA += montantTVA;
+                    totalTTC += montantTTC;
+
+                    if (yPosition < 150) {
+                        const newPage = pdfDoc.addPage([595.28, 841.89]);
+                        page = newPage;
+                        page.drawRectangle({
+                            x: 0, y: 0, width: width, height: height,
+                            color: PDFLib.rgb(bgColor.r, bgColor.g, bgColor.b)
+                        });
+                        yPosition = height - margin - 30;
+                        page.drawRectangle({
+                            x: tableX,
+                            y: yPosition - 5,
+                            width: tableWidth,
+                            height: 20,
+                            color: PDFLib.rgb(...theme.colors.primary)
+                        });
+                        headerX = tableX;
+                        headers.forEach((header, i) => {
+                            page.drawText(header, {
+                                x: headerX + 5,
+                                y: yPosition,
+                                size: theme.fontSizes.body,
+                                font: fontBold,
+                                color: PDFLib.rgb(...theme.colors.headerText)
+                            });
+                            headerX += colWidths[i];
+                        });
+                        yPosition -= 30;
+                    }
+
+                    let colX = tableX;
+                    const lineHeight = 14;
+                    const charLimit = 40;
+                    
+                    const descLines = [];
+                    let descTemp = description;
+                    while (descTemp.length > charLimit) {
+                        let breakPoint = descTemp.lastIndexOf(' ', charLimit);
+                        if (breakPoint === -1) breakPoint = charLimit;
+                        descLines.push(descTemp.substring(0, breakPoint));
+                        descTemp = descTemp.substring(breakPoint).trim();
+                    }
+                    descLines.push(descTemp);
+
+                    let descY = yPosition;
+                    for (const line of descLines) {
+                        page.drawText(line, {
+                            x: colX + 5,
+                            y: descY,
+                            size: theme.fontSizes.body,
+                            font: fontRegular,
+                            color: PDFLib.rgb(...theme.colors.text)
+                        });
+                        descY -= lineHeight;
+                    }
+                    const descriptionHeight = descLines.length * lineHeight + (lineHeight / 2);
+                    colX += colWidths[0];
+
+                    page.drawText(quantite.toString(), {
+                        x: colX + 5,
+                        y: yPosition,
+                        size: theme.fontSizes.body,
+                        font: fontRegular,
+                        color: PDFLib.rgb(...theme.colors.text)
+                    });
+                    colX += colWidths[1];
+                    page.drawText(montantHT.toFixed(2) + ' €', {
+                        x: colX + 5,
+                        y: yPosition,
+                        size: theme.fontSizes.body,
+                        font: fontRegular,
+                        color: PDFLib.rgb(...theme.colors.text)
+                    });
+                    colX += colWidths[2];
+                    page.drawText(tauxTVA + '%', {
+                        x: colX + 5,
+                        y: yPosition,
+                        size: theme.fontSizes.body,
+                        font: fontRegular,
+                        color: PDFLib.rgb(...theme.colors.text)
+                    });
+                    colX += colWidths[3];
+                    page.drawText(modePaiement, {
+                        x: colX + 5,
+                        y: yPosition,
+                        size: theme.fontSizes.body,
+                        font: fontRegular,
+                        color: PDFLib.rgb(...theme.colors.text)
+                    });
+                    colX += colWidths[4];
+                    page.drawText(montantTTC.toFixed(2) + ' €', {
+                        x: colX + 5,
+                        y: yPosition,
+                        size: theme.fontSizes.body,
+                        font: fontRegular,
+                        color: PDFLib.rgb(...theme.colors.text)
+                    });
+                    
+                    const rowHeight = Math.max(20, descriptionHeight);
+                    yPosition -= rowHeight;
+                }
+
+                // Totaux
+                yPosition -= 10;
+                
+                page.drawRectangle({
+                    x: tableX + colWidths[0] + colWidths[1],
+                    y: yPosition - 5,
+                    width: colWidths[2] + colWidths[3] + colWidths[4] + colWidths[5],
+                    height: 18,
+                    color: PDFLib.rgb(...theme.colors.accent)
+                });
+
+                page.drawText('TOTAL HT', {
+                    x: tableX + colWidths[0] + colWidths[1] + 5,
+                    y: yPosition,
+                    size: theme.fontSizes.header,
+                    font: fontBold,
+                    color: PDFLib.rgb(...theme.colors.text)
+                });
+                page.drawText(totalHT.toFixed(2) + ' €', {
+                    x: tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + 5,
+                    y: yPosition,
+                    size: theme.fontSizes.header,
+                    font: fontBold,
+                    color: PDFLib.rgb(...theme.colors.text)
+                });
+                
+                yPosition -= 23;
+                
+                page.drawText('TOTAL TVA', {
+                    x: tableX + colWidths[0] + colWidths[1] + 5,
+                    y: yPosition,
+                    size: theme.fontSizes.header,
+                    font: fontBold,
+                    color: PDFLib.rgb(...theme.colors.text)
+                });
+                page.drawText(totalTVA.toFixed(2) + ' €', {
+                    x: tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + 5,
+                    y: yPosition,
+                    size: theme.fontSizes.header,
+                    font: fontBold,
+                    color: PDFLib.rgb(...theme.colors.text)
+                });
+                
+                yPosition -= 23;
+                
+                page.drawRectangle({
+                    x: tableX + colWidths[0] + colWidths[1],
+                    y: yPosition - 5,
+                    width: colWidths[2] + colWidths[3] + colWidths[4] + colWidths[5],
+                    height: 20,
+                    color: PDFLib.rgb(...theme.colors.primary)
+                });
+                
+                page.drawText('TOTAL TTC', {
+                    x: tableX + colWidths[0] + colWidths[1] + 5,
+                    y: yPosition,
+                    size: theme.fontSizes.header + 1,
+                    font: fontBold,
+                    color: PDFLib.rgb(...theme.colors.headerText)
+                });
+                page.drawText(totalTTC.toFixed(2) + ' €', {
+                    x: tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + 5,
+                    y: yPosition,
+                    size: theme.fontSizes.header + 1,
+                    font: fontBold,
+                    color: PDFLib.rgb(...theme.colors.headerText)
+                });
+                
+                yPosition -= 40;
+
+                // Mentions légales
+                if (document.getElementById('showMentions').checked || document.getElementById('customMentions').value) {
+                    if (yPosition < 120) {
+                        const newPage = pdfDoc.addPage([595.28, 841.89]);
+                        page = newPage;
+                        page.drawRectangle({
+                            x: 0, y: 0, width: width, height: height,
+                            color: PDFLib.rgb(bgColor.r, bgColor.g, bgColor.b)
+                        });
+                        yPosition = height - margin - 30;
+                    }
+                    
+                    page.drawText('Mentions légales :', {
+                        x: margin,
+                        y: yPosition,
+                        size: theme.fontSizes.header,
+                        font: fontBold,
+                        color: PDFLib.rgb(...theme.colors.primary)
+                    });
+                    yPosition -= 20;
+                    
+                    let mentions = [];
+                    if (document.getElementById('customMentions').value) {
+                        mentions = document.getElementById('customMentions').value.split('\n');
+                    } else {
+                        mentions = [
+                            'TVA non applicable, art. 293 B du CGI.',
+                            'En cas de retard de paiement, indemnité forfaitaire de 40€ pour frais de recouvrement.',
+                            'Aucun escompte pour paiement anticipé.'
+                        ];
+                    }
+                    
+                    for (let mention of mentions) {
+                        if (yPosition < 50) {
+                            const newPage = pdfDoc.addPage([595.28, 841.89]);
+                            page = newPage;
+                            page.drawRectangle({
+                                x: 0, y: 0, width: width, height: height,
+                                color: PDFLib.rgb(bgColor.r, bgColor.g, bgColor.b)
+                            });
+                            yPosition = height - margin - 30;
+                        }
+                        page.drawText('• ' + mention, {
+                            x: margin + 10,
+                            y: yPosition,
+                            size: theme.fontSizes.small,
+                            font: fontRegular,
+                            color: PDFLib.rgb(...theme.colors.text)
+                        });
+                        yPosition -= 15;
+                    }
+                }
+
+                // Commentaire
+                const commentaire = document.getElementById('commentaire').value;
+                if (commentaire) {
+                    yPosition -= 30;
+                    if (yPosition < 100) {
+                        const newPage = pdfDoc.addPage([595.28, 841.89]);
+                        page = newPage;
+                        page.drawRectangle({
+                            x: 0, y: 0, width: width, height: height,
+                            color: PDFLib.rgb(bgColor.r, bgColor.g, bgColor.b)
+                        });
+                        yPosition = height - margin - 30;
+                    }
+                    page.drawText('Commentaire :', {
+                        x: margin,
+                        y: yPosition,
+                        size: theme.fontSizes.header,
+                        font: fontBold,
+                        color: PDFLib.rgb(...theme.colors.primary)
+                    });
+                    yPosition -= 20;
+                    const lines = commentaire.match(/.{1,90}/g) || [commentaire];
+                    for (let line of lines) {
+                        if (yPosition < 50) {
+                            const newPage = pdfDoc.addPage([595.28, 841.89]);
+                            page = newPage;
+                            page.drawRectangle({
+                                x: 0, y: 0, width: width, height: height,
+                                color: PDFLib.rgb(bgColor.r, bgColor.g, bgColor.b)
+                            });
+                            yPosition = height - margin - 30;
+                        }
+                        page.drawText(line, {
+                            x: margin + 10,
+                            y: yPosition,
+                            size: theme.fontSizes.body,
+                            font: fontRegular,
+                            color: PDFLib.rgb(...theme.colors.text)
+                        });
+                        yPosition -= 15;
+                    }
+                }
+
+                // Numérotation des pages
+                try {
+                    const pages = pdfDoc.getPages();
+                    const totalPages = pages.length;
+                    if (totalPages > 1) {
+                        pages.forEach((page, index) => {
+                            const { width, height } = page.getSize();
+                            const pageNumberText = `${index + 1}/${totalPages}`;
+                            const textWidth = fontRegular.widthOfTextAtSize(pageNumberText, 10);
+                            const xPos = (width - textWidth) / 2;
+                            const yPos = 30;
+                            page.drawText(pageNumberText, {
+                                x: xPos,
+                                y: yPos,
+                                size: 10,
+                                font: fontRegular,
+                                color: PDFLib.rgb(...theme.colors.text)
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Impossible d\'ajouter la numérotation des pages:', error);
+                }
+
+                // Sauvegarde
+                const pdfBytes = await pdfDoc.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Facture_${document.getElementById('factureNumero').value}_${currentTheme}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+            } catch (error) {
+                console.error('❌ Erreur lors de la génération du PDF:', error);
+                alert('Une erreur est survenue. Veuillez vérifier vos données.\n\nDétails: ' + error.message);
+            } finally {
+                loading.classList.remove('active');
+            }
+        });
+
+        console.log('✅ Éditeur de facture chargé avec succès !');
+        console.log('📍 Thème actuel:', currentTheme);
+        console.log('💾 localStorage disponible:', localStorageAvailable);
+    </script>
+</body>
+</html>
